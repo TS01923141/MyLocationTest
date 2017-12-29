@@ -27,23 +27,20 @@ import com.google.android.gms.maps.model.MarkerOptions;
 import com.google.android.gms.tasks.OnCompleteListener;
 import com.google.android.gms.tasks.Task;
 
-public class MapsActivity extends FragmentActivity implements OnMapReadyCallback {
+public class MapsActivity extends FragmentActivity implements OnMapReadyCallback, IMapsActivity {
 
     ICheckPermission checkPermission;
     IGetMyLocation getMyLocation;
-
-    private static final String TAG = MapsActivity.class.getSimpleName();
     private GoogleMap mMap;
 
     private boolean mLocationPermissionGranted;
-    private static final int DEAFULT_ZOOM = 15;
-    private static final int PERMISSION_REQUEST_ACCESS_FINE_LOCATION = 1;
-    private Location mLastKnownLocation;
     private FusedLocationProviderClient mFusedLocationProviderClient;
 
+    @Override
     public Context getContext(){
         return this;
     }
+    @Override
     public ICheckPermission getCheckPermission(){
         return checkPermission;
     }
@@ -59,7 +56,7 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
         mFusedLocationProviderClient = LocationServices.getFusedLocationProviderClient(this);
 
         checkPermission = new CheckPermission(this);
-        getMyLocation = new GetMyLocation(this, mLastKnownLocation, mFusedLocationProviderClient);
+        getMyLocation = new GetMyLocation(this, mFusedLocationProviderClient);
     }
 
     /**
@@ -78,28 +75,8 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
         mLocationPermissionGranted = checkPermission.getLocationPermission();
         getMyLocation.initMap(mMap);
 
-//        Log.i("onMapReady","mLocationPermissionGranted: "+ String.valueOf(mLocationPermissionGranted));
         if(mLocationPermissionGranted){
-//            Log.i("onMapReady.true","mLocationPermissionGranted: "+ String.valueOf(mLocationPermissionGranted));
             getMyLocation.updateLocationUI(mLocationPermissionGranted);
-        }
-//        getLocationPermission();
-    }
-
-    /**
-     * 檢查/取得權限
-     */
-    public void getLocationPermission() {
-        Log.i("getLocationPermission","mLocationPermissionGranted: "+ String.valueOf(mLocationPermissionGranted));
-        if(ContextCompat.checkSelfPermission(this.getApplicationContext(),
-                Manifest.permission.ACCESS_FINE_LOCATION)
-                == PackageManager.PERMISSION_GRANTED){
-            mLocationPermissionGranted = true;
-            updateLocationUI();
-        }else{
-            ActivityCompat.requestPermissions(this,
-                    new String[]{Manifest.permission.ACCESS_FINE_LOCATION},
-                    PERMISSION_REQUEST_ACCESS_FINE_LOCATION);
         }
     }
 
@@ -109,73 +86,6 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
     @Override
     public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
         mLocationPermissionGranted = checkPermission.onRequestPermissionsResult(requestCode, permissions, grantResults);
-//        Log.i("onRequestPermissionsResult","mLocationPermissionGranted: "+ String.valueOf(mLocationPermissionGranted));
-//        mLocationPermissionGranted = false;
-//        switch (requestCode){
-//            case PERMISSION_REQUEST_ACCESS_FINE_LOCATION:{
-//                if(grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED){
-//                    mLocationPermissionGranted = true;
-//                }
-//            }
-//        }
         getMyLocation.updateLocationUI(mLocationPermissionGranted);
-//        updateLocationUI();
-    }
-
-    /**
-     * 依使用者是否有給予權限決定更新/要求權限
-     */
-    private void updateLocationUI() {
-        if(mMap == null){
-            return;
-        }
-        Log.i("updateLocationUI","mLocationPermissionGranted: "+ String.valueOf(mLocationPermissionGranted));
-        try{
-            if(mLocationPermissionGranted){
-                mMap.setMyLocationEnabled(true);
-                mMap.getUiSettings().setMyLocationButtonEnabled(true);
-                getDeviceLocation();
-            }else{
-                mMap.setMyLocationEnabled(false);
-                mMap.getUiSettings().setMyLocationButtonEnabled(false);
-                mLastKnownLocation = null;
-                Log.i("updateLocationUI.false","mLocationPermissionGranted: "+ String.valueOf(mLocationPermissionGranted));
-                getLocationPermission();
-            }
-        }catch (SecurityException e){
-            Log.e("Exception: %s", e.getMessage());
-        }
-    }
-
-    /**
-     * 取得裝置地點
-     */
-    private void getDeviceLocation(){
-        try{
-            Log.i("getDeviceLocation", "mLocationPermissionGranted"+ String.valueOf(mLocationPermissionGranted));
-            if(mLocationPermissionGranted){
-                Task<Location> locationResult = mFusedLocationProviderClient.getLastLocation();
-                locationResult.addOnCompleteListener(this, new OnCompleteListener<Location>() {
-                    @Override
-                    public void onComplete(@NonNull Task<Location> task) {
-                        if(task.isSuccessful()) {
-                            mLastKnownLocation = task.getResult();
-                            mMap.moveCamera(CameraUpdateFactory.newLatLngZoom(
-                                    new LatLng(mLastKnownLocation.getLatitude(),
-                                            mLastKnownLocation.getLongitude()), DEAFULT_ZOOM));
-                        }else {
-                            Log.d(TAG,"Current location is null. Using defaults");
-                            Log.e(TAG, "Exception: %s", task.getException());
-                            mMap.moveCamera(CameraUpdateFactory.newLatLngZoom(
-                                    new LatLng(mLastKnownLocation.getLatitude(),
-                                            mLastKnownLocation.getLongitude()), DEAFULT_ZOOM));
-                            mMap.getUiSettings().setMyLocationButtonEnabled(false);
-                        }
-                    }
-                });
-            }
-        } catch (SecurityException e){
-            Log.e("Exception: %s", e.getMessage());
-        }
     }
 }
